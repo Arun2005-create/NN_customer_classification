@@ -14,7 +14,7 @@ You are required to help the manager to predict the right group of the new custo
 
 ## Neural Network Model
 
-<img width="869" height="713" alt="Screenshot 2026-02-06 184805" src="https://github.com/user-attachments/assets/6e808709-6ddc-4642-906f-b2f4c05dbc23" />
+<img width="832" height="834" alt="NNM MODEL" src="https://github.com/user-attachments/assets/20777a60-7dd7-4166-920c-796280eb393b" />
 
 ## DESIGN STEPS:
 
@@ -45,52 +45,133 @@ Save the trained model, export it if needed, and deploy it for real-world use.
 ### Register Number: 212223230021
 
 ```python
+
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from torch.utils.data import TensorDataset, DataLoader
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+print("Name: ARUN KUMAR B")
+print("Register No: 212223230021")
+
+data = pd.read_csv("customers.csv")
+
+data = data.drop(columns=["ID"])
+
+data.fillna({"Work_Experience": 0, "Family_Size": data["Family_Size"].median()}, inplace=True)
+
+categorical_columns = ["Gender", "Ever_Married", "Graduated", "Profession", "Spending_Score", "Var_1"]
+for col in categorical_columns:
+    data[col] = LabelEncoder().fit_transform(data[col])
+
+label_encoder = LabelEncoder()
+data["Segmentation"] = label_encoder.fit_transform(data["Segmentation"])
+
+X = data.drop(columns=["Segmentation"])
+y = data["Segmentation"].values
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+X_train = torch.tensor(X_train, dtype=torch.float32)
+X_test = torch.tensor(X_test, dtype=torch.float32)
+y_train = torch.tensor(y_train, dtype=torch.long)
+y_test = torch.tensor(y_test, dtype=torch.long)
+
+train_loader = DataLoader(TensorDataset(X_train, y_train), batch_size=16, shuffle=True)
+test_loader = DataLoader(TensorDataset(X_test, y_test), batch_size=16)
+
 class PeopleClassifier(nn.Module):
-    def __init__(self, input_size, num_classes):
-        super(PeopleClassifier, self).__init__()
+    def __init__(self, input_size):
+        super().__init__()
         self.fc1 = nn.Linear(input_size, 32)
         self.fc2 = nn.Linear(32, 16)
-        self.fc3 = nn.Linear(16, num_classes)
+        self.fc3 = nn.Linear(16, 4)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
+        x = self.relu(self.fc1(x))
+        x = self.relu(self.fc2(x))
         x = self.fc3(x)
         return x
-```
-```python
-# Initialize the Model, Loss Function, and Optimizer
-input_size = X_train.shape[1]
-num_classes = 4
 
-model = PeopleClassifier(input_size, num_classes)
+input_size = X_train.shape[1]
+model = PeopleClassifier(input_size)
+
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-```
-```python
-def train_model(model, train_loader, criterion, optimizer, epochs):
-    for epoch in range(epochs):
-        model.train()
-        total_loss = 0
+epochs = 50
 
-        for inputs, labels in train_loader:
-            optimizer.zero_grad()
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+for epoch in range(epochs):
+    model.train()
+    for X_batch, y_batch in train_loader:
+        optimizer.zero_grad()
+        outputs = model(X_batch)
+        loss = criterion(outputs, y_batch)
+        loss.backward()
+        optimizer.step()
+    if (epoch+1) % 10 == 0:
+        print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}")
 
-            total_loss += loss.item()
+model.eval()
+predictions, actuals = [], []
 
-        print(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss:.4f}")
+with torch.no_grad():
+    for X_batch, y_batch in test_loader:
+        outputs = model(X_batch)
+        _, predicted = torch.max(outputs, 1)
+        predictions.extend(predicted.numpy())
+        actuals.extend(y_batch.numpy())
+
+accuracy = accuracy_score(actuals, predictions)
+conf_matrix = confusion_matrix(actuals, predictions)
+class_report = classification_report(actuals, predictions, target_names=label_encoder.classes_)
+
+print("\nName:ARUN KUMAR B")
+print("Register No: 212223230021")
+print(f"Test Accuracy: {accuracy*100:.2f}%")
+print("Confusion Matrix:\n", conf_matrix)
+print("Classification Report:\n", class_report)
+
+sns.heatmap(conf_matrix, annot=True, cmap='Blues', xticklabels=label_encoder.classes_, yticklabels=label_encoder.classes_, fmt='g')
+plt.xlabel("Predicted Labels")
+plt.ylabel("True Labels")
+plt.title("Confusion Matrix")
+plt.show()
+
+sample_input = X_test[12].unsqueeze(0)
+
+with torch.no_grad():
+    output = model(sample_input)
+    predicted_class_index = torch.argmax(output[0]).item()
+    predicted_class_label = label_encoder.inverse_transform([predicted_class_index])[0]
+
+print("\nName: ARUN KUMAR B")
+print("Register No: 212223230021")
+print(f"Predicted class for sample input: {predicted_class_label}")
+print(f"Actual class for sample input: {label_encoder.inverse_transform([y_test[12].item()])[0]}")
+
+
 ```
 
 
 
 ## Dataset Information
 
-<img width="1149" height="465" alt="image" src="https://github.com/user-attachments/assets/a666efea-0f91-4259-b67e-70dcd7fd2e0c" />
+<img width="976" height="674" alt="image" src="https://github.com/user-attachments/assets/21823034-ab48-464a-bf0a-a4747f387677" />
 
 
 ## OUTPUT
@@ -98,19 +179,21 @@ def train_model(model, train_loader, criterion, optimizer, epochs):
 
 
 ### Confusion Matrix
+<img width="712" height="527" alt="211" src="https://github.com/user-attachments/assets/26b7adaa-dc56-4331-8628-1daf4247cd25" />
 
-<img width="699" height="611" alt="image" src="https://github.com/user-attachments/assets/b92e2c6e-e858-4ad7-9323-4ae261214365" />
+
 
 
 ### Classification Report
 
-<img width="571" height="241" alt="image" src="https://github.com/user-attachments/assets/a6895600-e11b-4762-b606-e84b2e740420" />
+<img width="622" height="575" alt="212" src="https://github.com/user-attachments/assets/76d9017f-7c85-4af1-88f3-953526f90c32" />
 
 
 
 ### New Sample Data Prediction
 
-<img width="779" height="258" alt="image" src="https://github.com/user-attachments/assets/726a289f-2ecf-4c55-bb91-cf198b4da60c" />
+<img width="377" height="100" alt="213" src="https://github.com/user-attachments/assets/b40306ed-e29d-49b1-b9f7-4346efb2bc78" />
+
 
 ## RESULT
 
